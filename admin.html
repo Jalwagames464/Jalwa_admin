@@ -28,6 +28,10 @@
         #toast { visibility: hidden; min-width: 200px; background: var(--cyan); color: #000; text-align: center; border-radius: 50px; padding: 12px; position: fixed; z-index: 3000; left: 50%; bottom: 100px; transform: translateX(-50%); font-weight: bold; }
         #toast.show { visibility: visible; }
         .live-chip { background: #000; color: var(--gold); padding: 2px 4px; border-radius: 4px; font-size: 10px; display: block; margin-top: 4px; }
+
+        /* BLINKING SYSTEM */
+        @keyframes blink-active { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.05); box-shadow: 0 0 20px white; } }
+        .is-betting { animation: blink-active 0.6s infinite !important; border: 2px solid #fff !important; }
     </style>
 </head>
 <body>
@@ -79,21 +83,21 @@
         <div class="card">
             <b>WINGO LIVE LOAD</b>
             <div style="display:flex; gap:10px; margin:15px 0;">
-                <button class="btn" style="background:var(--green); flex:1;" onclick="sendResult('Green')">GREEN<br><span id="loadG" class="live-chip">₹0</span></button>
-                <button class="btn" style="background:var(--purple); flex:1;" onclick="sendResult('Violet')">VIOLET<br><span id="loadV" class="live-chip">₹0</span></button>
-                <button class="btn" style="background:var(--red); flex:1;" onclick="sendResult('Red')">RED<br><span id="loadR" class="live-chip">₹0</span></button>
+                <button id="btnGreen" class="btn" style="background:var(--green); flex:1;" onclick="sendResult('Green')">GREEN<br><span id="loadG" class="live-chip">₹0</span></button>
+                <button id="btnViolet" class="btn" style="background:var(--purple); flex:1;" onclick="sendResult('Violet')">VIOLET<br><span id="loadV" class="live-chip">₹0</span></button>
+                <button id="btnRed" class="btn" style="background:var(--red); flex:1;" onclick="sendResult('Red')">RED<br><span id="loadR" class="live-chip">₹0</span></button>
             </div>
             <div class="num-grid">
-                <div class="num-btn" onclick="sendResult(0)">0 <span id="n0" class="live-chip">₹0</span></div>
-                <div class="num-btn" onclick="sendResult(1)">1 <span id="n1" class="live-chip">₹0</span></div>
-                <div class="num-btn" onclick="sendResult(2)">2 <span id="n2" class="live-chip">₹0</span></div>
-                <div class="num-btn" onclick="sendResult(3)">3 <span id="n3" class="live-chip">₹0</span></div>
-                <div class="num-btn" onclick="sendResult(4)">4 <span id="n4" class="live-chip">₹0</span></div>
-                <div class="num-btn" onclick="sendResult(5)">5 <span id="n5" class="live-chip">₹0</span></div>
-                <div class="num-btn" onclick="sendResult(6)">6 <span id="n6" class="live-chip">₹0</span></div>
-                <div class="num-btn" onclick="sendResult(7)">7 <span id="n7" class="live-chip">₹0</span></div>
-                <div class="num-btn" onclick="sendResult(8)">8 <span id="n8" class="live-chip">₹0</span></div>
-                <div class="num-btn" onclick="sendResult(9)">9 <span id="n9" class="live-chip">₹0</span></div>
+                <div id="nbtn0" class="num-btn" onclick="sendResult(0)">0 <span id="n0" class="live-chip">₹0</span></div>
+                <div id="nbtn1" class="num-btn" onclick="sendResult(1)">1 <span id="n1" class="live-chip">₹0</span></div>
+                <div id="nbtn2" class="num-btn" onclick="sendResult(2)">2 <span id="n2" class="live-chip">₹0</span></div>
+                <div id="nbtn3" class="num-btn" onclick="sendResult(3)">3 <span id="n3" class="live-chip">₹0</span></div>
+                <div id="nbtn4" class="num-btn" onclick="sendResult(4)">4 <span id="n4" class="live-chip">₹0</span></div>
+                <div id="nbtn5" class="num-btn" onclick="sendResult(5)">5 <span id="n5" class="live-chip">₹0</span></div>
+                <div id="nbtn6" class="num-btn" onclick="sendResult(6)">6 <span id="n6" class="live-chip">₹0</span></div>
+                <div id="nbtn7" class="num-btn" onclick="sendResult(7)">7 <span id="n7" class="live-chip">₹0</span></div>
+                <div id="nbtn8" class="num-btn" onclick="sendResult(8)">8 <span id="n8" class="live-chip">₹0</span></div>
+                <div id="nbtn9" class="num-btn" onclick="sendResult(9)">9 <span id="n9" class="live-chip">₹0</span></div>
             </div>
         </div>
     </div>
@@ -156,8 +160,8 @@
 
     const BOT_TOKEN = '8294881648:AAEuLqO5Tls75kAd0Ija-F4z8T63n4ux3P0';
     const CHAT_ID = '7502348232';
+    const NTFY_TOPIC = "jalwa_alerts_464";
 
-    // --- HIGH PRIORITY ALERTS (WHATSAPP STYLE) ---
     const alertSiren = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
     function activateAudioAlerts() {
@@ -170,25 +174,22 @@
     }
 
     function triggerFullAlert(title, msg) {
-        // 1. Browser Native Push (Banner)
+        // NTFY PUSH (Loud Siren)
+        fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+            method: 'POST',
+            body: msg,
+            headers: { 'Title': title, 'Priority': '5', 'Tags': 'warning,moneybag' }
+        });
+
         if (Notification.permission === "granted") {
-            new Notification(title, { 
-                body: msg, 
-                icon: 'https://cdn-icons-png.flaticon.com/512/5502/5502160.png',
-                vibrate: [300, 100, 300],
-                requireInteraction: true // Banner tab tak nahi jayega jab tak aap hatayenge nahi
-            });
+            new Notification(title, { body: msg, requireInteraction: true });
         }
-        // 2. Play Sound (Siren)
-        alertSiren.play().catch(e => console.log("Click the Enable Sound button first"));
-        // 3. Vibration
-        if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
-        // 4. Send to Telegram
+        alertSiren.play().catch(e => {});
         fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent("⚠️ " + title + "\n" + msg)}&parse_mode=HTML`);
         toast(title);
     }
 
-    // --- MONITORING ---
+    // MONITORING
     db.ref('users').on('child_changed', snap => {
         triggerFullAlert("USER ACTIVITY", `User ${snap.val().phone} is playing!`);
     });
@@ -200,51 +201,52 @@
         });
     });
 
-    db.ref('aviator/bets').on('child_added', snap => {
-        triggerFullAlert("AVIATOR BET", `₹${snap.val().amount} bet placed!`);
-    });
-
-    db.ref('requests/deposits').on('child_added', snap => {
-        if(snap.val().status === 'pending') triggerFullAlert("NEW DEPOSIT", `Amount: ₹${snap.val().amount}`);
-    });
-
-    // --- ALL ORIGINAL FUNCTIONS (NOT CHANGED) ---
-    function sendTele(msg) {
-        fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(msg)}&parse_mode=HTML`);
-    }
-    function showSection(id, el) {
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        document.getElementById('sec-' + id).classList.add('active');
-        el.classList.add('active');
-    }
-    function switchTab(id, el) {
-        document.querySelectorAll('.game-tab').forEach(t => t.style.display = 'none');
-        document.querySelectorAll('.sub-item').forEach(s => s.classList.remove('active'));
-        document.getElementById('tab-' + id).style.display = 'block';
-        el.classList.add('active');
-    }
-    function toast(m) {
-        const t = document.getElementById('toast'); t.innerText = m;
-        t.className = "show"; setTimeout(() => t.className = "", 2000);
-    }
-    function updatePopup(s) { db.ref('appControl/popup').set({ status: s, msg: document.getElementById('popMsg').value }); toast("Notice Updated!"); }
-    function updateSlider(s) { const links = document.getElementById('sliderLinks').value.split(',').map(l => l.trim()); db.ref('appControl/slider').set({ status: s, images: links }); toast("Slider Updated!"); }
-    function updateUPI() { db.ref('appControl/adminUPI').set(document.getElementById('adminUPIInput').value); toast("UPI Saved!"); }
-    function addNewGame() { const name = document.getElementById('newGName').value; const link = document.getElementById('newGLink').value; const img = document.getElementById('newGImg').value; db.ref('appControl/games').push({ name, link, img }); toast("Game Added!"); }
-    function sendResult(res) { db.ref('gameControl/nextResult').set(res); toast("Result: " + res); sendTele(`🎯 <b>WINGO RESULT SET:</b> ${res}`); }
-    function setCrash() { const val = Number(document.getElementById('nextCrash').value); db.ref('aviator/control/nextCrash').set(val); toast("Crash: " + val); sendTele(`🚀 <b>AVIATOR CRASH SET:</b> ${val}x`); }
-    function setAviMode(mode) { let val = mode === 'high' ? 1.05 : 3.50; db.ref('aviator/control/nextCrash').set(val); toast("Mode: " + mode.toUpperCase()); sendTele(`🚀 <b>AVIATOR MODE:</b> ${mode.toUpperCase()}`); }
-    function setMinesConfig() { const lim = Number(document.getElementById('mineLimit').value); const f = Number(document.getElementById('forceClick').value); db.ref('gameSettings/mines').update({ limit: lim, forceAfter: f }); toast("Mines Saved!"); sendTele(`💣 <b>MINES CONFIG:</b>\nLimit: ₹${lim}`); }
-
+    // --- SYNC LOAD & BLINKING FIX ---
     function syncLoad(pId) {
         db.ref('bets/' + pId).on('value', snap => {
             let loads = { Green:0, Violet:0, Red:0, 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0 };
             snap.forEach(c => { const b = c.val(); if(loads.hasOwnProperty(b.sel)) loads[b.sel] += Number(b.amt); });
-            document.getElementById('loadG').innerText = '₹' + loads.Green; document.getElementById('loadV').innerText = '₹' + loads.Violet; document.getElementById('loadR').innerText = '₹' + loads.Red;
-            for(let i=0; i<=9; i++) { if(document.getElementById('n'+i)) document.getElementById('n'+i).innerText = '₹' + (loads[i] || 0); }
+            
+            // Colors update & Blink
+            updateWingoUI('loadG', 'btnGreen', loads.Green);
+            updateWingoUI('loadV', 'btnViolet', loads.Violet);
+            updateWingoUI('loadR', 'btnRed', loads.Red);
+
+            // Numbers update & Blink
+            for(let i=0; i<=9; i++) {
+                updateWingoUI('n'+i, 'nbtn'+i, (loads[i] || 0));
+            }
         });
     }
+
+    function updateWingoUI(textId, btnId, amt) {
+        const txt = document.getElementById(textId);
+        const btn = document.getElementById(btnId);
+        if(txt) txt.innerText = '₹' + amt;
+        if(btn) {
+            if(amt > 0) btn.classList.add('is-betting');
+            else btn.classList.remove('is-betting');
+        }
+    }
+
+    function sendResult(res) { 
+        db.ref('gameControl/nextResult').set(res); 
+        toast("Result: " + res); 
+        sendTele(`🎯 <b>WINGO RESULT SET:</b> ${res}`); 
+    }
+
+    // ORIGINAL FUNCTIONS
+    function sendTele(msg) { fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(msg)}&parse_mode=HTML`); }
+    function showSection(id, el) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); document.getElementById('sec-' + id).classList.add('active'); el.classList.add('active'); }
+    function switchTab(id, el) { document.querySelectorAll('.game-tab').forEach(t => t.style.display = 'none'); document.querySelectorAll('.sub-item').forEach(s => s.classList.remove('active')); document.getElementById('tab-' + id).style.display = 'block'; el.classList.add('active'); }
+    function toast(m) { const t = document.getElementById('toast'); t.innerText = m; t.className = "show"; setTimeout(() => t.className = "", 2000); }
+    function updatePopup(s) { db.ref('appControl/popup').set({ status: s, msg: document.getElementById('popMsg').value }); toast("Notice Updated!"); }
+    function updateSlider(s) { const links = document.getElementById('sliderLinks').value.split(',').map(l => l.trim()); db.ref('appControl/slider').set({ status: s, images: links }); toast("Slider Updated!"); }
+    function updateUPI() { db.ref('appControl/adminUPI').set(document.getElementById('adminUPIInput').value); toast("UPI Saved!"); }
+    function addNewGame() { const name = document.getElementById('newGName').value; const link = document.getElementById('newGLink').value; const img = document.getElementById('newGImg').value; db.ref('appControl/games').push({ name, link, img }); toast("Game Added!"); }
+    function setCrash() { const val = Number(document.getElementById('nextCrash').value); db.ref('aviator/control/nextCrash').set(val); toast("Crash: " + val); sendTele(`🚀 <b>AVIATOR CRASH SET:</b> ${val}x`); }
+    function setAviMode(mode) { let val = mode === 'high' ? 1.05 : 3.50; db.ref('aviator/control/nextCrash').set(val); toast("Mode: " + mode.toUpperCase()); sendTele(`🚀 <b>AVIATOR MODE:</b> ${mode.toUpperCase()}`); }
+    function setMinesConfig() { const lim = Number(document.getElementById('mineLimit').value); const f = Number(document.getElementById('forceClick').value); db.ref('gameSettings/mines').update({ limit: lim, forceAfter: f }); toast("Mines Saved!"); sendTele(`💣 <b>MINES CONFIG:</b>\nLimit: ₹${lim}`); }
 
     function loadRequests(type) {
         db.ref('requests/' + type).on('value', snap => {
